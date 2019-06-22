@@ -1,1 +1,1 @@
-from trainer.trainer import Classifier
+from trainer.trainer import MUSIC_ANALYSIS

@@ -41,12 +41,14 @@ class MusicToImage:
     def convert_all(self):
         assert os.path.exists(self.m_path)
         for folder in os.listdir(self.m_path):
+            print (folder)
             folder = os.path.join(self.m_path, folder)
             wavs = glob.glob(folder + "/*wav")
             for wav in wavs:
                 image = self.wav_ro_jpg(wav)
+                width = str(image.shape[1])
                 image_path = wav.replace(
-                    "TrainM", "TrainI").replace("wav", "png")
+                    "TrainM", "TrainI").replace(".wav", "_" + width + ".png")
                 directory = "/".join(image_path.split("/")[:-1])
                 os.makedirs(directory, exist_ok=True)
                 cv2.imwrite(image_path, image)
