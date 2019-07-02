@@ -166,7 +166,8 @@ class ResNet(nn.Module):
         x = res[0]
         for counter, elem in enumerate(res):
             if counter != 0:
-                x = x * elem
+                x = x + elem
+        # x_cat = torch.cat((res[0], res[1]), 1)
         # x/=len(res)
         if get_embedding:
             return x, series

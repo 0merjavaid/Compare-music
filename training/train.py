@@ -78,7 +78,7 @@ def main():
     # write_val("loggings/"+args.experiment_name+"/val.txt", val_set)
     model =\
         classifier.resnet18(True)
-    print (model)
+
     if args.cuda:
         model.cuda()
 

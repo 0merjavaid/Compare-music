@@ -14,14 +14,18 @@ import copy
 
 data_transforms = {
     'TrainI': transforms.Compose([
-        transforms.RandomResizedCrop(224),
-        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(
+            size=(256, 325)),
+        transforms.Resize((224, 224)),
+        # transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ]),
-    'TrainI': transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
+    'TestI': transforms.Compose([
+        transforms.RandomCrop(
+            size=(256, 425)),
+        transforms.Resize((224, 224)),
+        # transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ]),
@@ -30,11 +34,11 @@ data_transforms = {
 data_dir = './'
 image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x),
                                           data_transforms[x])
-                  for x in ['TrainI', 'TrainI']}
-dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=4,
+                  for x in ['TrainI', 'TestI']}
+dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=16,
                                               shuffle=True, num_workers=4)
-               for x in ['TrainI', 'TrainI']}
-dataset_sizes = {x: len(image_datasets[x]) for x in ['TrainI', 'TrainI']}
+               for x in ['TrainI', 'TestI']}
+dataset_sizes = {x: len(image_datasets[x]) for x in ['TrainI', 'TestI']}
 class_names = image_datasets['TrainI'].classes
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -73,7 +77,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
         print('-' * 10)
 
         # Each epoch has a training and validation phase
-        for phase in ['TrainI', 'TrainI']:
+        for phase in ['TrainI', 'TestI']:
             if phase == 'TrainI':
                 scheduler.step()
                 model.train()  # Set model to training mode
@@ -115,7 +119,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
                 phase, epoch_loss, epoch_acc))
 
             # deep copy the model
-            if phase == 'TrainI' and epoch_acc > best_acc:
+            if phase == 'TestI' and epoch_acc > best_acc:
                 best_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
 
@@ -140,9 +144,9 @@ model_ft = model_ft.to(device)
 criterion = nn.CrossEntropyLoss()
 
 # Observe that all parameters are being optimized
-optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.0001, momentum=0.9)
+optimizer_ft = optim.SGD(model_ft.parameters(), lr=0.001, momentum=0.9)
 
 # Decay LR by a factor of 0.1 every 7 epochs
 exp_lr_scheduler = lr_scheduler.StepLR(optimizer_ft, step_size=7, gamma=0.1)
 model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler,
-                       num_epochs=25)
+                       num_epochs=50)

@@ -12,9 +12,16 @@ class MusicToImage:
         self.i_path = i_path
 
     def wav_ro_jpg(self, wav_path):
+        assert os.path.exists(wav_path)
         clip, sample_rate = librosa.load(wav_path, sr=None)
         cropped = clip[clip != 0]
-        clip = clip[0:cropped.shape[0]]
+        # print ("before ", clip.shape)
+        if ("series3" in wav_path):
+            print ("hehe")
+            clip = clip[0:cropped.shape[0]+23000]
+        else:
+            clip = clip[0:cropped.shape[0]+1000]
+        # print ("after ", clip.shape)
         clip = np.hstack((clip, clip))
         n_fft = 2048
         hop_length = 512
@@ -35,8 +42,8 @@ class MusicToImage:
         mel_spec_db = np.abs(mel_spec_db)
         mel_spec_db = ((mel_spec_db/np.max(mel_spec_db))
                        * 255).astype("uint8")
-        # return cv2.applyColorMap(mel_spec_db, cv2.COLORMAP_JET)
-        return mel_spec_db
+        return cv2.applyColorMap(mel_spec_db, cv2.COLORMAP_JET)
+        # return mel_spec_db
 
     def convert_all(self):
         assert os.path.exists(self.m_path)

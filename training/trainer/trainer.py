@@ -39,26 +39,30 @@ class MUSIC_ANALYSIS:
     def train(self, epoch, data_iterator, val_iterator, test=False):
 
         self.model.train()
-        train_loss, train_accuracy = list(), list()
+        sync_losses, cat_losses, sync_accuracies, cat_accuracies = list(), list(), list(), list()
         best_model = None
         best_val_accuracy = 0
         best_epoch = 0
         for i, (images, cat_target, target)in enumerate(tqdm(data_iterator)):
             sync_pred, cat_pred, sync_loss, cat_loss = self.predict(
                 images, cat_target, target)
-            print (sync_loss, cat_loss, sync_loss+cat_loss)
 
-            train_loss.append(sync_loss.cpu().item() + cat_loss.cpu().item())
+            cat_losses.append(cat_loss.cpu().item())
+            sync_losses.append(sync_loss.cpu().item())
             t_accuracy = self.eval_metrics(
                 sync_pred, cat_pred, target, cat_target)
-            print (t_accuracy)
-            train_accuracy.append(t_accuracy)
-            if i % 20 == 0:
-                avg_loss = np.mean(train_loss[-10:])
-                avg_acc = np.mean(train_accuracy[-10:])
+            sync_accuracies.append(t_accuracy[0])
+            cat_accuracies.append(t_accuracy[1])
 
-                self.train_logger.info(f'Epoch {epoch}, Iter: {i}, TRAINING__  loss: {sync_loss+cat_loss}, Accuracy: {t_accuracy}, smooth_loss: {avg_loss},\
-                                       smooth_acc: {avg_acc}')
+            if i % 1 == 0:
+                print (sync_accuracies[-10:])
+                sync_avg_loss = np.mean(sync_losses[-30:])
+                cat_avg_loss = np.mean(cat_losses[-30:])
+
+                sync_avg_acc = np.mean(sync_accuracies[-30:])
+                cat_avg_acc = np.mean(cat_accuracies[-30:])
+
+                self.train_logger.info(f'Epoch {epoch}, Iter: {i}, TRAINING__  Closs: {cat_avg_loss}, Sloss{sync_avg_loss}, CAccuracy: {cat_avg_acc}, SAccuracy: {sync_avg_acc}')
 
             # if i % int(self.val_step) == 0:
             #     self.model.eval()
@@ -80,7 +84,8 @@ class MUSIC_ANALYSIS:
             # loss :{np.mean(val_loss)},Accuracy:{np.mean(val_accuracy)}')
 
             # self.model.train()
-            combined_loss = sync_loss + cat_loss
+            # cat_loss.backward()
+            combined_loss = sync_loss+cat_loss
             combined_loss.backward()
             self.optimizer.step()
 

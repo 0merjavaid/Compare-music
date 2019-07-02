@@ -14,8 +14,8 @@ import random
 from imgaug import augmenters as iaa
 import random
 import cv2
-import matplotlib
-matplotlib.use('TkAgg')
+# import matplotlib
+# matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 logger = logging.getLogger('global')
@@ -200,7 +200,7 @@ class MUSIC_LOADER(data.Dataset):
             1])
         time_window = min(min_width, np.random.randint(350, 750))
 
-        max_allowed_difference = np.random.randint(0, 10)
+        max_allowed_difference = np.random.randint(0, 3)
         if pair_type == 3:
             time_window = 500
             max_allowed_difference = np.random.randint(100, 300)
