@@ -266,7 +266,8 @@ class MUSIC_LOADER(data.Dataset):
                 "_")[0][-1])-1, int(pair[1].split("_")[0][-1])-1
 
         images = [img1, img2]
-        images = self.aug.augment_images(images)
+        if self.mode == "Train":
+            images = self.aug.augment_images(images)
         for i, image in enumerate(images):
             images[i] = self.preprocess(image)
 
