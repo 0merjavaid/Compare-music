@@ -40,23 +40,50 @@ class MUSIC_LOADER(data.Dataset):
             transforms.ToTensor(),
             self.normalize
         ])
-
-        self.create_positive_dataset()
-        self.create_negative_dataset()
+        if self.mode == "Test":
+            self.create_test_set()
+        else:
+            self.create_positive_dataset()
+            self.create_negative_dataset()
         random.shuffle(self.music_pairs)
+        self.aug = self.augmentation()
 
     def get_meta(self):
         return 0
 
-    def create_pairs(self, lis):
+    def create_pairs(self, lis, label=1):
         pairs = list()
+
         for i in range(len(lis)-2):
             for j in range(i+1, len(lis)):
-                pair = [lis[i], lis[j], 1]
+                pair = [lis[i], lis[j], label]
                 pairs.append(pair)
 
-        pairs.append([lis[-2], lis[-1], 1])
+        pairs.append([lis[-2], lis[-1], label])
         return pairs
+
+    def create_test_set(self):
+        phrases = phrases = os.listdir(self.data_path)
+
+        for phrase in phrases:
+            time_slots = dict()
+            files = glob.glob(os.path.join(
+                self.data_path, phrase+"/"+self.format))
+            for file in files:
+                chunk_number = int(file.split("_")[1])
+                if chunk_number not in time_slots.keys():
+                    time_slots[chunk_number] = [file]
+                else:
+                    time_slots[chunk_number].append(file)
+
+            for key in time_slots.keys():
+                same_chunk_files = time_slots[key]
+                if key < 10:
+                    self.music_pairs += self.create_pairs(same_chunk_files, 1)
+                else:
+                    self.music_pairs += self.create_pairs(same_chunk_files, 0)
+        random.shuffle(self.music_pairs)
+        print (len(self.music_pairs))
 
     def create_positive_dataset(self):
 
@@ -86,6 +113,7 @@ class MUSIC_LOADER(data.Dataset):
             max_reached = False
             samples_created = 0
             if key == 0:
+                sample_per_type = 100
                 for phrase in phrases:
                     files = glob.glob(os.path.join(
                         self.data_path, phrase+"/"+self.format))
@@ -109,6 +137,7 @@ class MUSIC_LOADER(data.Dataset):
                         break
 
             elif key == 2:
+                sample_per_type = 100
                 for phrase in phrases:
                     files = glob.glob(os.path.join(
                         self.data_path, phrase+"/"+self.format))
@@ -131,6 +160,7 @@ class MUSIC_LOADER(data.Dataset):
                         break
 
             else:
+                sample_per_type = 700
                 for phrase in phrases:
                     files = glob.glob(os.path.join(
                         self.data_path, phrase+"/"+self.format))
@@ -143,7 +173,7 @@ class MUSIC_LOADER(data.Dataset):
                         for other_file in other_files:
                             other_file_speed = int(other_file.split(
                                 " ")[-1].split("-")[0])
-                            if abs(other_file_speed - file_speed) == 0 and \
+                            if abs(other_file_speed - file_speed) == 0 and\
                                     int(other_file.split("_")[-1].split(".")[0]) >= 800:
                                 pair = [file, other_file, key]
 
@@ -159,25 +189,25 @@ class MUSIC_LOADER(data.Dataset):
     def augmentation(self):
         aug = iaa.Sequential([
             # iaa.Scale((224, 224)),
-            iaa.Sometimes(0.25, iaa.GaussianBlur(sigma=(0, 2.0))),
-            iaa.Fliplr(0.5),
+            iaa.Sometimes(0.25, iaa.GaussianBlur(sigma=(0, 1.5))),
+            # iaa.Fliplr(0.5),
 
-            iaa.Sometimes(0.5, iaa.Affine(
+            # iaa.Sometimes(0.5, iaa.Affine(
 
-                # translate by -20 to +20 percent (per axis)
-                translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},
-                rotate=(-45, 45),  # rotate by -45 to +45 degrees
-                shear=(-16, 16),  # shear by -16 to +16 degrees
+            #     # translate by -20 to +20 percent (per axis)
+            #     translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},
+            #     rotate=(-45, 45),  # rotate by -45 to +45 degrees
+            #     shear=(-16, 16),  # shear by -16 to +16 degrees
 
-            )),
+            # )),
 
-            # iaa.Sometimes(0.2,
-            #               iaa.OneOf([iaa.Dropout(p=(0, 0.0071)),
-            # iaa.CoarseDropout(0.041, size_percent=0.5)])),
+            iaa.Sometimes(0.401,
+                          iaa.OneOf([iaa.Dropout(p=(0, 0.0071)),
+                                     iaa.CoarseDropout(0.041, size_percent=0.5)])),
             iaa.Sometimes(0.3, iaa.AddToHueAndSaturation(
                 value=(-40, 40), per_channel=True)),
-            iaa.Sometimes(0.3, iaa.PerspectiveTransform(
-                scale=(0.061, 0.071))),
+            # iaa.Sometimes(0.3, iaa.PerspectiveTransform(
+            #     scale=(0.061, 0.071))),
             iaa.Sometimes(0.3, iaa.Add((-10, 10), per_channel=0.5)),
             iaa.Sometimes(0.1, iaa.AdditiveGaussianNoise(
                 loc=0, scale=(0.0, 0.007*255), per_channel=0.5)),
@@ -192,45 +222,51 @@ class MUSIC_LOADER(data.Dataset):
         pair = self.music_pairs[index]
         pair_type = pair[-1]
         in_sync = 1 if pair_type == 1 else 0
-        pair = pair[:-1]
+        pair = pair[: -1]
         random.shuffle(pair)
         img1 = cv2.imread(pair[0])
         img2 = cv2.imread(pair[1])
-        min_width = min(img1.shape[1], img2.shape[
-            1])
-        time_window = min(min_width, np.random.randint(350, 750))
+        if self.mode == "Train":
+            min_width = min(img1.shape[1], img2.shape[
+                1])
+            time_window = min(min_width, np.random.randint(400, 450))
 
-        max_allowed_difference = np.random.randint(0, 3)
-        if pair_type == 3:
-            time_window = 500
-            max_allowed_difference = np.random.randint(100, 300)
-        max_x_start = max(
-            max_allowed_difference, min_width - (time_window + max_allowed_difference))
-        if time_window != min_width:
-            x_start = np.random.randint(0, max_x_start)
-            x_start = max(x_start, max_allowed_difference)
+            max_allowed_difference = np.random.randint(0, 9)
+            if pair_type == 3:
+                time_window = min(min_width, np.random.randint(400, 450))
+                max_allowed_difference = np.random.randint(60, 300)
+            max_x_start = max(
+                max_allowed_difference, min_width - (time_window + max_allowed_difference))
+            if time_window != min_width:
+                x_start = np.random.randint(0, max_x_start)
+                x_start = max(x_start, max_allowed_difference)
 
+            else:
+                x_start = 0
+                max_allowed_difference = 0
+
+            img1 = img1[:, x_start - max_allowed_difference: x_start -
+                        max_allowed_difference + time_window]
+            img2 = img2[:, x_start: x_start+time_window]
+
+            assert np.abs(img1.shape[1] - img2.shape[1]
+                          ) <= max_allowed_difference
+            j_label = int(pair[0].split(" ")[0][-1])-1
+            i_label = int(pair[1].split(" ")[0][-1])-1
+            # print (j_label, i_label, in_sync, pair[
+            #     0].split("/")[-1], pair[1].split("/")[-1], pair_type)
+            # plt.imshow(cv2.applyColorMap(
+            #     np.vstack((img1, img2)), cv2.COLORMAP_JET))
+            # plt.show()
+            # print (img1.shape)
+            # img1 = cv2.applyColorMap(img1, cv2.COLORMAP_JET)
+            # img2 = cv2.applyColorMap(img2, cv2.COLORMAP_JET)
         else:
-            x_start = 0
-            max_allowed_difference = 0
-
-        img1 = img1[:, x_start - max_allowed_difference: x_start -
-                    max_allowed_difference + time_window]
-        img2 = img2[:, x_start: x_start+time_window]
-
-        assert np.abs(img1.shape[1] - img2.shape[1]) <= max_allowed_difference
-        j_label = int(pair[0].split(" ")[0][-1])-1
-        i_label = int(pair[1].split(" ")[0][-1])-1
-        # print (j_label, i_label, in_sync, pair[
-        #     0].split("/")[-1], pair[1].split("/")[-1], pair_type)
-        # plt.imshow(cv2.applyColorMap(
-        #     np.vstack((img1, img2)), cv2.COLORMAP_JET))
-        # plt.show()
-        img1 = cv2.applyColorMap(img1, cv2.COLORMAP_JET)
-        img2 = cv2.applyColorMap(img2, cv2.COLORMAP_JET)
+            i_label, j_label = int(pair[0].split(
+                "_")[0][-1])-1, int(pair[1].split("_")[0][-1])-1
 
         images = [img1, img2]
-
+        images = self.aug.augment_images(images)
         for i, image in enumerate(images):
             images[i] = self.preprocess(image)
 

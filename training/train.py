@@ -61,14 +61,14 @@ def main():
     logger.info(f'{args}')
 
     train_loader = dataloader.dataloader.MUSIC_LOADER(
-        args.images_folder)
+        args.images_folder, mode="Train")
     train_iterator = torch.utils.data.DataLoader(train_loader,
                                                  batch_size=args.batch_size,
                                                  shuffle=True, num_workers=1,
                                                  pin_memory=True)
 
     val_loader = dataloader.dataloader.MUSIC_LOADER(
-        args.images_folder)
+        args.images_folder.replace("Train", "Test"), mode="Test")
     val_iterator = torch.utils.data.DataLoader(val_loader,
                                                batch_size=args.batch_size,
                                                shuffle=True, num_workers=1,
@@ -87,19 +87,19 @@ def main():
         model, optimizer, args.cuda, args.experiment_name, args.val_step)
 
     for epoch in range(args.epochs):
-        prev_val_acc = music_trainer.best_val_accuracy
+        prev_val_acc = music_trainer.best_val_accuracy_sync
         music_trainer.train(epoch, train_iterator,
                             val_iterator, test=False)
-        # logger.info(
-        #     f'Epoch {epoch}, Best Epoch {music_trainer.best_epoch},\
-        # Best Accuracy {music_trainer.best_val_accuracy}')
+        logger.info(
+            f'Epoch {epoch}, Best Epoch {music_trainer.best_epoch},\
+        Best Accuracy {music_trainer.best_val_accuracy_sync}')
 
         save_dir = os.path.join(args.checkpoint_dir, args.experiment_name)
         os.makedirs(save_dir, exist_ok=True)
-        if music_trainer.best_val_accuracy > prev_val_acc:
+        if music_trainer.best_val_accuracy_sync > prev_val_acc:
             torch.save(music_trainer.best_model.state_dict(), os.path.join(
                 save_dir, args.version+"_"+str(music_trainer.best_epoch) +
-                "_"+str(music_trainer.best_val_accuracy)+".pt"))
+                "_syn_"+str(music_trainer.best_val_accuracy_sync)[:4]+"_cat_"+str(music_trainer.best_val_accuracy_cat)[:4]+".pt"))
 
 
 if __name__ == '__main__':

@@ -112,8 +112,10 @@ class ResNet(nn.Module):
         # self.fc = nn.Linear(512 * block.expansion, 1000)
         embedding_size = elem
         self.fc2 = nn.Linear(512 * block.expansion, embedding_size)
-        self.fc3 = nn.Linear(embedding_size, 2)
-        self.fc_for_category = nn.Linear(embedding_size, num_classes)
+        # self.fc3 = nn.Linear(block.elemxpansion*embedding_size*2, 2)
+        self.fc3 = nn.CosineSimilarity()
+        self.fc_for_category = nn.Linear(
+            block.expansion*embedding_size, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -147,6 +149,7 @@ class ResNet(nn.Module):
             # Only returning last score
             return F.softmax(self.fc3(inp) / 3, dim=1)[:, 1]
         for x in inp:
+            # print(x.shape)
             x = self.conv1(x)
             x = self.bn1(x)
             x = self.relu(x)
@@ -159,21 +162,23 @@ class ResNet(nn.Module):
 
             x = self.avgpool(x)
             x = x.view(x.size(0), -1)
-            x = self.fc2(x)
+            # x = self.fc2(x)
             series = self.fc_for_category(x)
             all_series.append(series)
             res.append(x)
         x = res[0]
-        for counter, elem in enumerate(res):
-            if counter != 0:
-                x = x + elem
-        # x_cat = torch.cat((res[0], res[1]), 1)
+        # for counter, elem in enumerate(res):
+        #     if counter != 0:
+        #         x = x * elem
+        # print (x.shape)
+        x_cat = torch.cat((res[0], res[1]), 1)
         # x/=len(res)
         if get_embedding:
             return x, series
         all_series = torch.stack(all_series)
         # x = torch.cat(res, 1)
-        return self.fc3(x), all_series
+        # return self.fc3(x_cat), all_series
+        return self.fc3(res[0], res[1]), all_series
 
 
 def resnet18(pretrained=False, **kwargs):
@@ -200,7 +205,7 @@ def resnet34(pretrained=False, **kwargs):
     return model
 
 
-def resnet50(pretrained=False, **kwargs):
+def resnet50(pretrained=True, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet

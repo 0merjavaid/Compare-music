@@ -15,15 +15,15 @@ import copy
 data_transforms = {
     'TrainI': transforms.Compose([
         transforms.RandomCrop(
-            size=(256, 325)),
+            size=(255, 405)),
         transforms.Resize((224, 224)),
         # transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ]),
     'TestI': transforms.Compose([
-        transforms.RandomCrop(
-            size=(256, 425)),
+        # transforms.RandomCrop(
+        #     size=(255, 355)),
         transforms.Resize((224, 224)),
         # transforms.CenterCrop(224),
         transforms.ToTensor(),
